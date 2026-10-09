@@ -43,9 +43,8 @@ jobs:
       - name: Build desktop (JVM)
         run: ./gradlew :app:packageJvmFatJar --stacktrace
 
-      # Web: bundle JS statis (KorGE 6.x task: jsBrowserDistribution -> /build/distributions).
-      - name: Build web (JS)
-        run: ./gradlew :app:jsBrowserDistribution --stacktrace
+      # Catatan: target JS dilewati. Plugin KorGE 6.0.10 tidak mengekspos
+      # task packaging JS (jsBrowserDistribution/jsWeb) di proyek ini.
 
       # Android: APK debug (tanpa signing, untuk distribusi cepat).
       - name: Build Android APK
@@ -55,14 +54,10 @@ jobs:
       - name: Collect artifacts
         run: |
           mkdir -p dist
-          # JVM fat jar
-          find app/build -name "*.jar" -path "*jvm*" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.jar \; 2>/dev/null || true
+          # JVM fat jar (nama app-all.jar)
+          find app/build -name "*-all.jar" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.jar \; 2>/dev/null || true
           # Android APK
           find app/build/outputs/apk -name "*.apk" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.apk \; 2>/dev/null || true
-          # Web bundle -> zip (KorGE jsBrowserDistribution output ke app/build/distributions).
-          if [ -d app/build/distributions ]; then
-            (cd app/build/distributions && zip -qr "$GITHUB_WORKSPACE/dist/monopoly-kmp-web-${GITHUB_REF_NAME}.zip" .)
-          fi
           ls -la dist/
 
       - name: Upload build artifacts
