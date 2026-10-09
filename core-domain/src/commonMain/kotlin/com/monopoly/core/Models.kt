@@ -74,7 +74,7 @@ data class DiceRoll(val die1: Int, val die2: Int) {
  * StateFlow<GameState> dan merender ulang saat snapshot baru diterbitkan.
  */
 data class GameState(
-    val players: List<Player>,
+    val players: List<Player> = emptyList(),
     val currentPlayerIndex: Int = 0,
     val phase: GamePhase = GamePhase.WAITING_FOR_ROLL,
     val lastRoll: DiceRoll? = null,
