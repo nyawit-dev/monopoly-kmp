@@ -3,12 +3,11 @@ package com.monopoly.ui
 import com.monopoly.core.DiceRoll
 import com.monopoly.core.GameRendererPort
 import com.monopoly.core.GameState
-import com.soywiz.korge.tween.*
-import com.soywiz.korge.view.*
-import com.soywiz.korim.color.Colors
-import com.soywiz.korma.geom.IPoint
-import com.soywiz.korma.interpolation.Easing
-import com.soywiz.klock.milliseconds
+import korlibs.korge.tween.*
+import korlibs.korge.view.*
+import korlibs.korge.input.onClick
+import korlibs.image.color.Colors
+import korlibs.time.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 
@@ -22,8 +21,8 @@ class KorgeRenderer(
     private val messageText: Text,
     private val pionViews: List<View>,
     private val actionUI: Container,
-    private val buyButton: Container,
-    private val skipButton: Container,
+    private val buyButton: View,
+    private val skipButton: View,
     private val tileSize: Double = 56.0,
     private val originX: Double = 40.0,
     private val originY: Double = 40.0
@@ -42,20 +41,20 @@ class KorgeRenderer(
             delay(60)
         }
         diceText.text = "${finalValue.total}"
-        diceText.tween(diceText::scale[1.25], time = 120.milliseconds, easing = Easing.EASE_OUT)
-        diceText.tween(diceText::scale[1.0], time = 120.milliseconds, easing = Easing.EASE_IN)
+        diceText.tween(diceText::scale[1.25], time = 120.milliseconds)
+        diceText.tween(diceText::scale[1.0], time = 120.milliseconds)
     }
 
     override suspend fun animatePionMove(playerId: Int, fromPosition: Int, toPosition: Int) {
         val pion = pionViews.getOrNull(playerId) ?: return
         val from = tileCenter(fromPosition)
-        pion.tween(pion::x[from.x], pion::y[from.y], time = 120.milliseconds, easing = Easing.EASE_IN_OUT)
+        pion.tween(pion::x[from.first], pion::y[from.second], time = 120.milliseconds)
         val steps = if (toPosition >= fromPosition) toPosition - fromPosition
                     else (40 - fromPosition) + toPosition // lewat START
         for (i in 1..steps) {
             val pos = (fromPosition + i) % 40
             val c = tileCenter(pos)
-            pion.tween(pion::x[c.x], pion::y[c.y], time = 110.milliseconds, easing = Easing.EASE_IN_OUT)
+            pion.tween(pion::x[c.first], pion::y[c.second], time = 110.milliseconds)
         }
     }
 
@@ -83,7 +82,7 @@ class KorgeRenderer(
      * Peta indeks petak (0..39) ke koordinat piksel pada papan 11x11.
      * Petak 0 (START) di pojok kanan-bawah, berlawanan arah jarum jam.
      */
-    private fun tileCenter(index: Int): IPoint {
+    private fun tileCenter(index: Int): Pair<Double, Double> {
         val i = ((index % 40) + 40) % 40
         val gx: Double
         val gy: Double
@@ -97,6 +96,6 @@ class KorgeRenderer(
             i == 30 -> { gx = 10.0; gy = 0.0 }               // GO_TO_JAIL (pojok kanan-atas)
             else -> { gx = 10.0; gy = (i - 30).toDouble() }  // sisi kanan, ke bawah
         }
-        return IPoint(originX + gx * tileSize, originY + gy * tileSize)
+        return Pair(originX + gx * tileSize, originY + gy * tileSize)
     }
 }

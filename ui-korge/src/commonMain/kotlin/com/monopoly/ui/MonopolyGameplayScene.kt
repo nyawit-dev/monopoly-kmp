@@ -4,14 +4,15 @@ import com.monopoly.assets.JsonAssetLoader
 import com.monopoly.core.GameEnginePort
 import com.monopoly.data.GameEngineImpl
 import com.monopoly.data.GameRepository
-import com.soywiz.korge.scene.Scene
-import com.soywiz.korge.view.*
-import com.soywiz.korim.color.Colors
+import korlibs.korge.input.onClick
+import korlibs.korge.scene.Scene
+import korlibs.korge.view.*
+import korlibs.image.color.Colors
 import kotlinx.coroutines.launch
 
 /**
  * Scene gameplay. Menyambungkan DI: repository -> engine -> renderer.
- * KorGE hanya host; aturan tetap di core-data.
+ * KorGE hanya host; aturan tetap di core-data. KorGE 6.x (namespace korlibs.*).
  */
 class MonopolyGameplayScene : Scene() {
 
@@ -27,23 +28,32 @@ class MonopolyGameplayScene : Scene() {
         val messageText = text("Tekan Lempar untuk mulai", textSize = 18.0) {
             position(40, 600)
         }
-        val rollButton = solidRect(180, 56, Colors["#C8102E"]) {
+
+        // Tombol LEMPAR: container berisi solidRect + label (posisi manual).
+        val rollButton = container {
+            solidRect(180, 56, Colors["#C8102E"]) { position(0, 0) }
+            text("LEMPAR", textSize = 22.0) {
+                color = Colors.WHITE
+                position(55, 15)
+            }
             position(860, 620)
         }
-        val rollLabel = text("LEMPAR", textSize = 22.0) {
-            centerOn(rollButton)
-            color = Colors.WHITE
-        }
+
+        // Referensi tombol aksi (dibuat sebagai View, bukan anak container
+        // agar bisa langsung dipakai renderer tanpa traversal anak).
+        var buyButton: View = solidRect(160, 56, Colors["#2E7D32"]) { position(360, 300) }
+        var skipButton: View = solidRect(160, 56, Colors["#B0B0B0"]) { position(540, 300) }
+
+        // Panel aksi: background gelap + label tombol (tombol sudah dibuat di atas,
+        // ditambahkan ke panel supaya tampil di atas overlay).
         val actionUI = container {
             visible = false
-            solidRect(1024, 640, Colors["#000000AA"]) { }
-            val buyBtn = solidRect(160, 56, Colors["#2E7D32"]) { position(360, 300) }
-            text("BELI", textSize = 22.0) { centerOn(buyBtn); color = Colors.WHITE }
-            val skipBtn = solidRect(160, 56, Colors["#B0B0B0"]) { position(540, 300) }
-            text("LEWATI", textSize = 22.0) { centerOn(skipBtn); color = Colors.WHITE }
+            solidRect(1024, 640, Colors["#000000AA"]) { position(0, 0) }
+            text("BELI", textSize = 22.0) { color = Colors.WHITE; position(435, 315) }
+            text("LEWATI", textSize = 22.0) { color = Colors.WHITE; position(615, 315) }
+            addChild(buyButton)
+            addChild(skipButton)
         }
-        val buyButton = actionUI.firstChild?.firstChild ?: solidRect(160, 56, Colors.GREEN)
-        val skipButton = actionUI.childAt(1)?.firstChild ?: solidRect(160, 56, Colors.GRAY)
 
         // Pion (satu per pemain, dibuat saat start).
         val pionViews = mutableListOf<View>()
