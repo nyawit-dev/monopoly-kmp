@@ -1,0 +1,95 @@
+name: Release
+
+# Rilis otomatis: push tag v* (mis. v1.0.0) -> build semua target ->
+# buat GitHub Release + attach artifact (JVM jar, Web bundle, Android APK).
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # butuh untuk membuat Release & upload asset
+
+jobs:
+  # 1) Build artefak lintas platform.
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      # Uji dulu agar rilis tak pernah dari kode merah.
+      - name: Test
+        run: ./gradlew :core-domain:jvmTest :core-data:jvmTest :core-assets:jvmTest --stacktrace
+
+      # Desktop: fat jar JVM.
+      - name: Build desktop (JVM)
+        run: ./gradlew :app:packageJvmFatJar --stacktrace
+
+      # Web: bundle JS statis.
+      - name: Build web (JS)
+        run: ./gradlew :app:jsBrowserProductionWebpack --stacktrace
+
+      # Android: APK debug (tanpa signing, untuk distribusi cepat).
+      - name: Build Android APK
+        continue-on-error: true
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          # JVM fat jar
+          find app/build -name "*.jar" -path "*jvm*" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.jar \; 2>/dev/null || true
+          # Android APK
+          find app/build/outputs/apk -name "*.apk" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.apk \; 2>/dev/null || true
+          # Web bundle -> zip
+          if [ -d app/build/dist/js/productionExecutable ]; then
+            (cd app/build/dist/js/productionExecutable && zip -qr ../../../../../dist/monopoly-kmp-web-${GITHUB_REF_NAME}.zip .)
+          fi
+          ls -la dist/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+
+  # 2) Buat GitHub Release dari artifact di atas.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
