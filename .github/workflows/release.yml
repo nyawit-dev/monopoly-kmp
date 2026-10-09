@@ -43,9 +43,9 @@ jobs:
       - name: Build desktop (JVM)
         run: ./gradlew :app:packageJvmFatJar --stacktrace
 
-      # Web: bundle JS statis.
+      # Web: bundle JS statis (KorGE 6.x task: jsWebMin).
       - name: Build web (JS)
-        run: ./gradlew :app:jsBrowserProductionWebpack --stacktrace
+        run: ./gradlew :app:jsWebMin --stacktrace
 
       # Android: APK debug (tanpa signing, untuk distribusi cepat).
       - name: Build Android APK
@@ -59,9 +59,10 @@ jobs:
           find app/build -name "*.jar" -path "*jvm*" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.jar \; 2>/dev/null || true
           # Android APK
           find app/build/outputs/apk -name "*.apk" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.apk \; 2>/dev/null || true
-          # Web bundle -> zip
-          if [ -d app/build/dist/js/productionExecutable ]; then
-            (cd app/build/dist/js/productionExecutable && zip -qr ../../../../../dist/monopoly-kmp-web-${GITHUB_REF_NAME}.zip .)
+          # Web bundle -> zip (cari folder yang berisi index.html hasil build).
+          WEB_DIR=$(find app/build -name "index.html" -path "*js*" 2>/dev/null | head -1 | xargs dirname 2>/dev/null)
+          if [ -n "$WEB_DIR" ] && [ -d "$WEB_DIR" ]; then
+            (cd "$WEB_DIR" && zip -qr "$GITHUB_WORKSPACE/dist/monopoly-kmp-web-${GITHUB_REF_NAME}.zip" .)
           fi
           ls -la dist/
 

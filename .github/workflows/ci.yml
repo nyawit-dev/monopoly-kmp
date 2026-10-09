@@ -42,7 +42,7 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Build web (JS)
-        run: ./gradlew :app:jsBrowserProductionWebpack --stacktrace
+        run: ./gradlew :app:jsWebMin --stacktrace
       - name: Build desktop (JVM fat jar)
         run: ./gradlew :app:packageJvmFatJar --stacktrace
       - name: Upload web build
