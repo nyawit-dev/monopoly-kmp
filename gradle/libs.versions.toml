@@ -1,7 +1,9 @@
 [versions]
-# Sesuai cetak biru: Kotlin 1.9.22 + KorGE 4.0.10 (API tween ::prop[value])
+# KorGE 6.0.0 (resolve bersih dari Maven Central). Plugin 4.0.10 memaksa
+# korge-reload-agent dari repo JetBrains (git-tag koordinat) yang 503.
+# Kotlin 1.9.22 kompatibel dengan KorGE 6.0.0.
 kotlin = "1.9.22"
-korge = "4.0.10"
+korge = "6.0.0"
 coroutines = "1.8.1"
 serialization = "1.6.3"
 agp = "8.5.2"

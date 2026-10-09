@@ -6,34 +6,45 @@ on:
   pull_request:
 
 jobs:
-  build-and-test:
+  # Job 1: aturan game inti (murni KMP, andal, tak tergantung KorGE).
+  core:
+    name: Build & test core (domain/data/assets)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-
-      # Uji aturan game (murni KMP, tercepat & paling penting).
       - name: Test core (JVM)
         run: ./gradlew :core-domain:jvmTest :core-data:jvmTest :core-assets:jvmTest --stacktrace
+      - name: Compile core (JVM)
+        run: ./gradlew :core-domain:compileKotlinJvm :core-data:compileKotlinJvm :core-assets:compileKotlinJvm --stacktrace
 
-      # Pastikan seluruh modul ter-compile.
-      - name: Assemble JVM
-        run: ./gradlew :app:assemble --stacktrace
-
-      - name: Build Web (JS)
+  # Job 2: build KorGE (app). Butuh repo KorGE yang andal (Maven Central).
+  game:
+    name: Build game (KorGE app)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Build web (JS)
         run: ./gradlew :app:jsBrowserProductionWebpack --stacktrace
-
+      - name: Build desktop (JVM fat jar)
+        run: ./gradlew :app:packageJvmFatJar --stacktrace
       - name: Upload web build
         uses: actions/upload-artifact@v4
         with:

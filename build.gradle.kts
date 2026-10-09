@@ -9,7 +9,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/korge") }
-        maven { url = uri("https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev") }
+        // KorGE 6.x + library korlibs diterbitkan ke Maven Central; tak perlu
+        // repo JetBrains (yang mengembalikan 503 untuk korge-reload-agent).
     }
 }
