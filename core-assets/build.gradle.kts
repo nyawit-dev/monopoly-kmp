@@ -6,7 +6,10 @@ plugins {
 kotlin {
     jvm()
     js(IR) { browser(); nodejs() }
-    iosX64(); iosArm64(); iosSimulatorArm64()
+    // Target native hanya di host macOS; di Linux CI dilewati (lihat core-domain).
+    if (System.getProperty("os.name").startsWith("Mac", ignoreCase = true)) {
+        iosX64(); iosArm64(); iosSimulatorArm64()
+    }
 
     sourceSets {
         val commonMain by getting {
