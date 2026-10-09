@@ -42,12 +42,12 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Build web (JS)
-        run: ./gradlew :app:jsWebMin --stacktrace
+        run: ./gradlew :app:jsBrowserDistribution --stacktrace
       - name: Build desktop (JVM fat jar)
         run: ./gradlew :app:packageJvmFatJar --stacktrace
       - name: Upload web build
         uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: app/build/dist/js/productionExecutable
+          path: app/build/distributions
           if-no-files-found: ignore
