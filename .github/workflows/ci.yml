@@ -64,8 +64,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      # ubuntu-latest sudah punya Android SDK preinstalled di /usr/local/lib/android/sdk.
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Make gradlew executable
