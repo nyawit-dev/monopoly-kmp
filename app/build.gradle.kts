@@ -22,4 +22,5 @@ kotlin {
 korge {
     targetJvm()
     targetJs()
+    targetAndroid()
 }
