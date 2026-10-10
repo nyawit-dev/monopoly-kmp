@@ -81,5 +81,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: app/build/platforms/android/**/*.apk
-          if-no-files-found: ignore
+          path: app/build/**/*.apk
+          if-no-files-found: error

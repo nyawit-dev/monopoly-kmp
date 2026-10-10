@@ -63,8 +63,10 @@ jobs:
           mkdir -p dist
           # JVM fat jar (nama app-all.jar)
           find app/build -name "*-all.jar" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.jar \; 2>/dev/null || true
-          # Android APK (KorGE indirect taruh di build/platforms/android)
-          find app/build/platforms/android -name "*.apk" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.apk \; 2>/dev/null || true
+          # Android APK (cari di seluruh build, lokasi pasti tergantung KorGE indirect)
+          APK=$(find app/build -name "*.apk" 2>/dev/null | head -1)
+          echo "APK ditemukan: $APK"
+          if [ -n "$APK" ]; then cp "$APK" dist/monopoly-kmp-${GITHUB_REF_NAME}.apk; fi
           ls -la dist/
 
       - name: Upload build artifacts
