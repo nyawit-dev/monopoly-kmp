@@ -6,11 +6,11 @@ import korlibs.korge.scene.sceneContainer
 import korlibs.image.color.Colors
 
 /**
- * Entry point. Menyatukan DI di dalam scene (repository -> engine ->
- * renderer) dan menjalankan blok KorGE. Satu main untuk JVM & JS (KMP).
- * KorGE 6.x namespace: korlibs.korge.* (bukan com.soywiz.korge).
+ * Runner sebenarnya. Entry point root (Main.kt di root package) mendelegasikan
+ * ke sini — KorGE Android mencari main() di root package, bukan di package ini.
+ * Satu entry untuk JVM & JS (KMP). KorGE 6.x namespace: korlibs.korge.*.
  */
-suspend fun main() = Korge(
+suspend fun runMonopoly() = Korge(
     virtualWidth = 1024,
     virtualHeight = 720,
     title = "Monopoly KMP KorGE",
