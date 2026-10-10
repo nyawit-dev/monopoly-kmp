@@ -46,18 +46,21 @@ jobs:
       # Catatan: target JS dilewati. Plugin KorGE 6.0.10 tidak mengekspos
       # task packaging JS (jsBrowserDistribution/jsWeb) di proyek ini.
 
-      # Android: APK debug (tanpa signing, untuk distribusi cepat).
+      # Android: APK debug (KorGE 6 indirect -> proyek build/platforms/android).
+      # installAndroidDebug generate APK walau tak ada device (dokumentasi KorGE).
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
       - name: Build Android APK
         continue-on-error: true
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:installAndroidDebug --stacktrace
 
       - name: Collect artifacts
         run: |
           mkdir -p dist
           # JVM fat jar (nama app-all.jar)
           find app/build -name "*-all.jar" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.jar \; 2>/dev/null || true
-          # Android APK
-          find app/build/outputs/apk -name "*.apk" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.apk \; 2>/dev/null || true
+          # Android APK (KorGE indirect taruh di build/platforms/android)
+          find app/build/platforms/android -name "*.apk" -exec cp {} dist/monopoly-kmp-${GITHUB_REF_NAME}.apk \; 2>/dev/null || true
           ls -la dist/
 
       - name: Upload build artifacts
