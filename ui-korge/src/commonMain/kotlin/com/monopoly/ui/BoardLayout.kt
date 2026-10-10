@@ -3,12 +3,24 @@ package com.monopoly.ui
 /**
  * Layout papan Monopoli 11x11 standar: 40 petak mengelilingi persegi.
  * Petak 0 (START) di pojok kanan-bawah, berlawanan arah jarum jam.
+ *
+ * Resolusi virtual POTRET (ukuran HP): 540x960.
+ * - Papan di ATAS: 11 x 40 = 440px, y 88..528 (+ bingkai)
+ * - Panel bawah (y 540..960): kartu pemain, dadu, tombol kocok, pesan
+ *
  * Mengembalikan koordinat PUSAT petak (untuk penempatan kartu & pion).
  */
 object BoardLayout {
-    const val TILE: Double = 48.0
-    const val ORIGIN_X: Double = 40.0
-    const val ORIGIN_Y: Double = 96.0
+    const val SCREEN_W: Double = 540.0
+    const val SCREEN_H: Double = 960.0
+
+    const val TILE: Double = 40.0
+    const val ORIGIN_X: Double = 50.0
+    const val ORIGIN_Y: Double = 88.0
+    /** Tinggi total papan (11 * TILE + bingkai). */
+    const val BOARD_SIZE: Double = TILE * 11 + 8
+    /** Y awal panel bawah (di bawah papan). */
+    const val PANEL_Y: Double = BOARD_SIZE + ORIGIN_Y + 12
 
     fun center(index: Int): Pair<Double, Double> {
         val i = ((index % 40) + 40) % 40

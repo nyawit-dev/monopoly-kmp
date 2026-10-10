@@ -3,9 +3,11 @@ package com.monopoly.ui
 import korlibs.image.color.Colors
 import korlibs.image.color.RGBA
 import korlibs.korge.input.onClick
+import korlibs.korge.tween.*
 import korlibs.korge.view.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import korlibs.time.milliseconds
 
 /**
  * Palet & komponen UI bersama — nuansa risograph zine: kertas krem,
@@ -40,8 +42,9 @@ object Theme {
 }
 
 /**
- * Tombol bergaya profesional: kotak tegas (estetika cetak), border opsional.
- * Lebar & tinggi eksplisit. Klik memicu aksi suspend via scope yang diberikan.
+ * Tombol bergaya profesional: kotak rounded dengan border opsional.
+ * Umpan balik tekan: skala mengecil lalu kembali sebelum aksi dijalankan.
+ * Klik memicu aksi suspend via scope yang diberikan.
  */
 fun Container.styledButton(
     scope: CoroutineScope,
@@ -52,18 +55,27 @@ fun Container.styledButton(
     fg: RGBA = Theme.PAPER,
     border: RGBA? = null,
     fontSize: Double = 20.0,
+    corner: Double = 10.0,
     onClick: suspend () -> Unit
 ): Container {
     val btn = container {
-        solidRect(width, height, border ?: bg)
-        if (border != null) {
-            solidRect(width - 4, height - 4, bg) { position(2.0, 2.0) }
-        }
+        roundRect(
+            korlibs.math.geom.Size2D(width, height),
+            korlibs.math.geom.RectCorners(corner),
+            bg,
+            border ?: Colors["#4A4338"],
+            height * 0.02,
+            false
+        )
         val labelText = text(label, textSize = fontSize) { color = fg }
         labelText.position((width - labelText.width) / 2, (height - fontSize) / 2 - 4)
     }
     btn.onClick {
-        scope.launch { onClick() }
+        scope.launch {
+            btn.tween(btn::scale[0.94], time = 70.milliseconds)
+            btn.tween(btn::scale[1.0], time = 70.milliseconds)
+            onClick()
+        }
     }
     return btn
 }

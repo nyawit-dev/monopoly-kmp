@@ -11,11 +11,11 @@ import korlibs.korge.view.*
 import kotlinx.coroutines.launch
 
 /**
- * Layar gameplay profesional:
- * - header bar (judul + indikator giliran/fase)
- * - papan 40 petak: kartu, chip warna grup properti, harga
- * - panel HUD kanan: kartu pemain (uang), kotak dadu, tombol lempar, pesan
- * - dialog aksi (beli / lewati)
+ * Layar gameplay — layout POTRET (540x960) untuk HP:
+ * - papan 40 petak di ATAS (chip warna grup + harga + nama singkat)
+ * - panel bawah: kartu pemain (horizontal), dadu visual (pip),
+ *   tombol kocok besar, baris pesan
+ * - dialog beli muncul sebagai overlay tengah
  * Pion digerakkan engine via KorgeRenderer; HUD mengamati StateFlow.
  */
 class GameplayScene(
@@ -23,26 +23,26 @@ class GameplayScene(
 ) : Scene() {
 
     override suspend fun SContainer.sceneMain() {
+        val SW = BoardLayout.SCREEN_W
+        val SH = BoardLayout.SCREEN_H
+
         // ---------- Data ----------
         val tiles = JsonAssetLoader().loadBoardConfig()
         val repo = GameRepository(tiles)
 
         // ---------- Latar ----------
-        solidRect(1024, 720, Theme.BG)
+        solidRect(SW, SH, Theme.BG)
 
         // ---------- Header ----------
-        solidRect(1024, 64, Theme.PANEL)
-        solidRect(1024, 2, Theme.GOLD) { position(0, 64) }
-        text("MONOPOLY", textSize = 26.0) { color = Theme.GOLD }.position(24, 18)
-        val turnText = text("", textSize = 15.0) { color = Theme.PAPER }
-        turnText.position(760, 22)
-        val phaseText = text("", textSize = 12.0) { color = Theme.MUTED }
-        phaseText.position(760, 44)
+        solidRect(SW, 56.0, Theme.PANEL)
+        solidRect(SW, 2.0, Theme.GOLD) { position(0, 56) }
+        text("MONOPOLY", textSize = 20.0) { color = Theme.GOLD }.position(16, 16)
+        val turnText = text("", textSize = 13.0) { color = Theme.PAPER }
+        turnText.position(SW - 16 - 200, 20)
 
-        // ---------- Papan ----------
-        // Bingkai papan.
+        // ---------- Papan (atas) ----------
         solidRect(
-            BoardLayout.TILE * 11 + 8, BoardLayout.TILE * 11 + 8, Theme.PANEL
+            BoardLayout.BOARD_SIZE, BoardLayout.BOARD_SIZE, Theme.PANEL
         ) { position(BoardLayout.ORIGIN_X - 4, BoardLayout.ORIGIN_Y - 4) }
 
         tiles.forEach { tile ->
@@ -50,84 +50,85 @@ class GameplayScene(
             val x = cx - BoardLayout.TILE / 2
             val y = cy - BoardLayout.TILE / 2
             val w = BoardLayout.TILE - 2
-            // Kartu petak.
             solidRect(w, w, if (tile.isCorner) Theme.PANEL_LIGHT else Theme.TILE) { position(x, y) }
             when {
                 tile.type == TileType.PROPERTY && tile.colorGroup != null -> {
-                    // Chip warna grup di atas kartu.
-                    solidRect(w, 8.0, Theme.groupColor(tile.colorGroup)) { position(x, y) }
-                    // Harga di bawah.
-                    text("${tile.price}", textSize = 9.0) { color = Theme.MUTED }
-                        .position(x + 4, y + w - 13)
+                    // Chip warna grup.
+                    solidRect(w, 7.0, Theme.groupColor(tile.colorGroup)) { position(x, y) }
+                    // Harga.
+                    text("${tile.price}", textSize = 8.0) { color = Theme.MUTED }
+                        .position(x + 2, y + w - 11)
                 }
                 tile.isCorner -> {
                     val label = when (tile.index) {
-                        0 -> "START"
-                        10 -> "JAIL"
-                        20 -> "PARKIR"
-                        30 -> "KE-JAIL"
-                        else -> ""
+                        0 -> "START"; 10 -> "JAIL"; 20 -> "PARKIR"; 30 -> "JAIL"; else -> ""
                     }
-                    text(label, textSize = 9.0) { color = Theme.GOLD }
-                        .position(x + 4, y + w - 14)
+                    text(label, textSize = 8.0) { color = Theme.GOLD }
+                        .position(x + 2, y + w - 11)
                 }
                 else -> {
                     val sym = when (tile.type) {
-                        TileType.RAILROAD -> "S"
+                        TileType.RAILROAD -> "R"
                         TileType.UTILITY -> "U"
                         else -> "?"
                     }
-                    text(sym, textSize = 15.0) { color = Theme.MUTED }
-                        .position(x + w / 2 - 4, y + w / 2 - 8)
+                    text(sym, textSize = 13.0) { color = Theme.MUTED }
+                        .position(x + w / 2 - 4, y + w / 2 - 7)
                 }
             }
         }
 
         // Watermark tengah papan.
-        val wm = text("MONOPOLY", textSize = 34.0) { color = Theme.LINE }
-        wm.position(304.0 - wm.width / 2, 360.0 - 20)
+        val wm = text("MONOPOLY", textSize = 22.0) { color = Theme.LINE }
+        wm.position(BoardLayout.ORIGIN_X + BoardLayout.TILE * 2.5 - wm.width / 2,
+            BoardLayout.ORIGIN_Y + BoardLayout.TILE * 5 - 14)
 
-        // ---------- Panel HUD kanan ----------
-        val px = 600.0
-        val pw = 1024.0 - px - 16
-        solidRect(pw, 720.0 - 96 - 16, Theme.PANEL) { position(px, 96.0) }
+        // ---------- Panel bawah ----------
+        val py = BoardLayout.PANEL_Y
+        solidRect(SW - 24, SH - py - 12, Theme.PANEL) { position(12, py) }
 
-        // Judul panel.
-        text("PEMAIN", textSize = 14.0) { color = Theme.MUTED }.position(px + 20, 116)
+        // Judul panel pemain.
+        text("PEMAIN", textSize = 11.0) { color = Theme.MUTED }.position(24, py + 12)
 
-        // ---------- Elemen dinamis ----------
+        // ---------- Elemen dinamis HUD (sebelum renderer: referensi list) ----------
         val moneyTexts = mutableListOf<Text>()
+        val cardViews = mutableListOf<View>()
         val pionViews = mutableListOf<View>()
+        val nameTexts = mutableListOf<Text>()
 
-        // Kotak dadu.
-        solidRect(180, 120, Theme.PANEL_LIGHT) { position(px + (pw - 180) / 2, 370) }
-        val die1Text = text("--", textSize = 44.0) { color = Theme.PAPER }
-        val die2Text = text("--", textSize = 44.0) { color = Theme.PAPER }
-        die1Text.position(px + (pw - 180) / 2 + 30, 398)
-        die2Text.position(px + (pw - 180) / 2 + 100, 398)
+        // ---------- Kotak area dadu (tengah panel bawah) ----------
+        val diceZoneY = py + 90
+        solidRect(SW - 48, 96.0, Theme.PANEL_LIGHT) { position(24, diceZoneY) }
 
-        // Pesan.
-        val messageText = text("", textSize = 13.0) { color = Theme.PAPER }
-        messageText.position(px + 20, 600)
+        // ---------- Dadu visual ----------
+        val dieSize = 72.0
+        val die1 = createDie(SW / 2 - dieSize - 8, diceZoneY + 12, dieSize)
+        val die2 = createDie(SW / 2 + 8, diceZoneY + 12, dieSize)
+        die1.setValue(1)
+        die2.setValue(1)
+
+        // Pesan (baris bawah panel).
+        val messageText = text("", textSize = 12.0) { color = Theme.PAPER }
+        messageText.position(24, SH - 46)
 
         // Dialog aksi (tombol dibuat di luar agar bisa direferensikan renderer).
-        val buyButton: View = solidRect(150, 48, Theme.GREEN) { position(px + 56, 470) }
-        val skipButton: View = solidRect(150, 48, Theme.PANEL_LIGHT) { position(px + 226, 470) }
+        val buyButton: View = solidRect(140, 44, Theme.GREEN) { position(SW / 2 - 150, 640) }
+        val skipButton: View = solidRect(140, 44, Theme.PANEL_LIGHT) { position(SW / 2 + 10, 640) }
         val actionUI = container {
             visible = false
-            solidRect(1024.0, 720.0, Colors["#000000CC"]) { position(0, 0) }
-            solidRect(pw - 40, 200.0, Theme.PANEL_LIGHT) { position(px + 20, 380.0) }
+            solidRect(SW, SH, Colors["#000000CC"]) { position(0, 0) }
+            solidRect(SW - 80, 200.0, Theme.PANEL_LIGHT) { position(40, 400) }
             text("BELI PROPERTI?", textSize = 18.0) { color = Theme.PAPER }
-                .position(px + 56, 410)
-            text("BELI", textSize = 18.0) { color = Theme.PAPER }.position(px + 112, 484)
-            text("LEWATI", textSize = 18.0) { color = Theme.PAPER }.position(px + 278, 484)
+                .position(SW / 2 - 70, 430)
+            text("BELI", textSize = 16.0) { color = Theme.PAPER }.position(SW / 2 - 110, 654)
+            text("LEWATI", textSize = 16.0) { color = Theme.PAPER }.position(SW / 2 + 48, 654)
             addChild(buyButton)
             addChild(skipButton)
         }
 
-        // ---------- DI: engine + renderer ----------
+        // ---------- DI ----------
         val renderer = KorgeRenderer(
-            dieTexts = listOf(die1Text, die2Text),
+            dieViews = listOf(die1, die2),
             messageText = messageText,
             pionViews = pionViews,
             actionUI = actionUI,
@@ -139,47 +140,54 @@ class GameplayScene(
         // ---------- Mulai game ----------
         engine.startGame(playerNames)
 
-        // Kartu pemain (HUD). Penanda identitas = lingkaran sejajar pion di
-        // papan (warna sama), bukan stripe dekoratif.
+        // Kartu pemain (horizontal, di bawah judul panel).
         engine.observeState().value.players.forEachIndexed { i, p ->
-            val cardY = 140.0 + i * 52
-            solidRect(pw - 40, 48.0, Theme.PANEL_LIGHT) { position(px + 20, cardY) }
-            circle(11.0, Colors[p.colorHex]) { position(px + 33, cardY + 13) }
-            text(p.name, textSize = 15.0) { color = Theme.PAPER }.position(px + 52, cardY + 6)
-            val moneyT = text("Rp ${p.money}", textSize = 13.0) { color = Theme.GOLD }
-            moneyT.position(px + 52, cardY + 26)
+            val cardW = (SW - 60) / 4
+            val cardX = 24 + i * cardW
+            val cardY = py + 32
+            val card = solidRect(cardW - 8, 46.0, Theme.PANEL_LIGHT) { position(cardX, cardY) }
+            cardViews.add(card)
+            circle(8.0, Colors[p.colorHex]) { position(cardX + 10, cardY + 9) }
+            val nameT = text(p.name.take(8), textSize = 10.0) { color = Theme.PAPER }
+            nameT.position(cardX + 24, cardY + 6)
+            nameTexts.add(nameT)
+            val moneyT = text("Rp ${p.money}", textSize = 11.0) { color = Theme.GOLD }
+            moneyT.position(cardX + 24, cardY + 24)
             moneyTexts.add(moneyT)
         }
 
         // Pion di papan.
         engine.observeState().value.players.forEachIndexed { i, p ->
             val (cx, cy) = BoardLayout.center(p.position)
-            val pion = circle(13.0, Colors[p.colorHex]) { position(cx - 13, cy - 13 + i * 6) }
+            val pion = circle(9.0, Colors[p.colorHex]) { position(cx - 9, cy - 9 + i * 4) }
             pionViews.add(pion)
         }
 
-        // Amati state untuk HUD (giliran, fase, uang).
+        // ---------- Tombol kocok (paling bawah, besar) ----------
+        styledButton(
+            scope = stage!!.views,
+            label = "KOCOK DADU",
+            width = SW - 48,
+            height = 64.0,
+            bg = Theme.GOLD,
+            fg = Theme.BG,
+            fontSize = 22.0,
+            corner = 14.0
+        ) {
+            engine.rollDiceAndMove()
+        }.position(24, SH - 116)
+
+        // ---------- Amati state untuk HUD ----------
         launch {
             engine.observeState().collect { state ->
                 turnText.text = "GILIRAN: ${state.currentPlayer.name}"
-                phaseText.text = state.phase.name
                 state.players.forEachIndexed { i, p ->
                     moneyTexts.getOrNull(i)?.text = "Rp ${p.money}"
+                    // Sorot kartu pemain aktif.
+                    cardViews.getOrNull(i)?.colorMul =
+                        if (i == state.currentPlayerIndex) Colors.WHITE else Colors["#888888"]
                 }
             }
         }
-
-        // Tombol lempar.
-        styledButton(
-            scope = stage!!.views,
-            label = "LEMPAR DADU",
-            width = 240.0,
-            height = 56.0,
-            bg = Theme.GOLD,
-            fg = Theme.BG,
-            fontSize = 18.0
-        ) {
-            engine.rollDiceAndMove()
-        }.position(px + (pw - 240) / 2, 510)
     }
 }

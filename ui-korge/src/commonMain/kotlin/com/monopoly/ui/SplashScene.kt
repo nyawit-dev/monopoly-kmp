@@ -17,19 +17,19 @@ class SplashScene : Scene() {
 
     override suspend fun SContainer.sceneMain() {
         val scope = CoroutineScope(coroutineContext)
-        solidRect(1024, 720, Theme.BG)
+        solidRect(BoardLayout.SCREEN_W, BoardLayout.SCREEN_H, Theme.BG)
 
         // Judul misregistrasi: vermilion kiri-atas, biru kanan-bawah, kertas di atas.
         // Motif identitas cetak risograph (bukan dekorasi generik).
         val title = "MONOPOLY"
-        val size = 88.0
-        val cx = 512.0
-        val cy = 300.0
+        val size = 62.0
+        val cx = BoardLayout.SCREEN_W / 2
+        val cy = 400.0
         val probe = text(title, textSize = size) { color = Theme.VERMILION }
         val w = probe.width
-        probe.position(cx - w / 2 - 5, cy - 5)
+        probe.position(cx - w / 2 - 4, cy - 4)
         val blue = text(title, textSize = size) { color = Theme.BLUE }
-        blue.position(cx - w / 2 + 5, cy + 5)
+        blue.position(cx - w / 2 + 4, cy + 4)
         val top = text(title, textSize = size) { color = Theme.PAPER }
         top.position(cx - w / 2, cy)
 
@@ -42,17 +42,17 @@ class SplashScene : Scene() {
         }
 
         // Pemisah emas.
-        solidRect(280.0, 3.0, Theme.GOLD) { position(512.0 - 140, 400.0) }
+        solidRect(200.0, 3.0, Theme.GOLD) { position(cx - 100, 500.0) }
 
         // Subjudul.
-        val sub = text("KOTLIN MULTIPLATFORM · KORGE EDITION", textSize = 17.0) {
+        val sub = text("KOTLIN MULTIPLATFORM · KORGE EDITION", textSize = 14.0) {
             color = Theme.MUTED
         }
-        sub.position(cx - sub.width / 2, 430.0)
+        sub.position(cx - sub.width / 2, 525.0)
 
         // Ajakan tap — animasi masuk sekali (bukan loop tak berujung).
-        val tap = text("TEKAN UNTUK MEMULAI", textSize = 20.0) { color = Theme.PAPER }
-        tap.position(cx - tap.width / 2, 560.0)
+        val tap = text("TEKAN UNTUK MEMULAI", textSize = 18.0) { color = Theme.PAPER }
+        tap.position(cx - tap.width / 2, 640.0)
         launch {
             delay(900)
             tap.tween(tap::scale[1.08], time = 500.milliseconds)
@@ -60,8 +60,8 @@ class SplashScene : Scene() {
         }
 
         // Kredit.
-        val credit = text("© 2026 NYAWIT", textSize = 13.0) { color = Theme.MUTED }
-        credit.position(cx - credit.width / 2, 680.0)
+        val credit = text("© 2026 NYAWIT", textSize = 12.0) { color = Theme.MUTED }
+        credit.position(cx - credit.width / 2, 880.0)
 
         suspend fun goMenu() {
             sceneContainer.changeTo { MenuScene() }

@@ -8,11 +8,13 @@ import korlibs.korge.scene.sceneContainer
 /**
  * Runner sebenarnya. Entry point root (Main.kt di root package) mendelegasikan
  * ke sini — KorGE Android mencari main() di root package, bukan di package ini.
- * Alur: Splash -> Menu -> Gameplay. KorGE 6.x namespace: korlibs.korge.*.
+ * Alur: Splash -> Menu -> Gameplay. Resolusi virtual POTRET (ukuran HP):
+ * 540x960, layout papan di atas + panel aksi di bawah.
+ * KorGE 6.x namespace: korlibs.korge.*.
  */
 suspend fun runMonopoly() = Korge(
-    virtualWidth = 1024,
-    virtualHeight = 720,
+    virtualWidth = 540,
+    virtualHeight = 960,
     title = "Monopoly KMP KorGE",
     bgcolor = Colors["#14110D"]
 ) {
