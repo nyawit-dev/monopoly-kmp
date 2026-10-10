@@ -20,6 +20,7 @@ rootProject.name = "monopoly-kmp"
 
 include(":core-domain")
 include(":core-data")
+include(":core-network")
 include(":core-assets")
 include(":ui-korge")
 include(":app")

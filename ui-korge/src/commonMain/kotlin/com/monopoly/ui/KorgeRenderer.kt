@@ -30,14 +30,19 @@ class KorgeRenderer(
     private val pionViews: List<View>,
     private val actionUI: Container,
     private val buyButton: View,
-    private val skipButton: View
+    private val skipButton: View,
+    private val eventCardUI: Container,
+    private val eventCardText: Text,
+    private val eventCardCloseButton: View
 ) : GameRendererPort {
 
     private var buyDialogDeferred: CompletableDeferred<Boolean>? = null
+    private var eventCardDeferred: CompletableDeferred<Unit>? = null
 
     init {
         buyButton.onClick { buyDialogDeferred?.complete(true) }
         skipButton.onClick { buyDialogDeferred?.complete(false) }
+        eventCardCloseButton.onClick { eventCardDeferred?.complete(Unit) }
     }
 
     override suspend fun animateDiceRoll(finalValue: DiceRoll) {
@@ -98,6 +103,20 @@ class KorgeRenderer(
         actionUI.alpha = 1.0
         actionUI.scale = 1.0
         return result
+    }
+
+    override suspend fun showEventCard(text: String) {
+        eventCardText.text = text
+        eventCardUI.visible = true
+        eventCardUI.scale = 0.9
+        eventCardUI.alpha = 0.0
+        eventCardUI.tween(eventCardUI::scale[1.0], time = 160.milliseconds)
+        eventCardUI.tween(eventCardUI::alpha[1.0], time = 160.milliseconds)
+        eventCardDeferred = CompletableDeferred()
+        eventCardDeferred!!.await()
+        eventCardUI.visible = false
+        eventCardUI.alpha = 1.0
+        eventCardUI.scale = 1.0
     }
 
     override suspend fun showMessage(text: String) {

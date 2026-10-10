@@ -6,8 +6,11 @@ kotlin = "1.9.22"
 korge = "6.0.0"
 coroutines = "1.8.1"
 serialization = "1.6.3"
+luaj = "3.0.1"
 agp = "8.5.2"
 gradle = "8.9"
+korio = "6.0.0"
+kable = "0.35.0"   # versi terakhir pakai java.util.UUID (Kotlin 1.9.22)
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -15,6 +18,9 @@ kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+luaj = { module = "org.luaj:luaj-jse", version.ref = "luaj" }
+korio-network = { module = "com.soywiz:korlibs-io-network-core", version.ref = "korio" }
+kable = { module = "com.juul.kable:kable-core", version.ref = "kable" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

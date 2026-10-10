@@ -5,7 +5,10 @@ import com.monopoly.core.GameEnginePort
 import com.monopoly.core.TileType
 import com.monopoly.data.GameEngineImpl
 import com.monopoly.data.GameRepository
+import com.monopoly.data.toSnapshotDto
+import com.monopoly.net.HostSession
 import korlibs.image.color.Colors
+import korlibs.korge.input.onClick
 import korlibs.korge.scene.Scene
 import korlibs.korge.view.*
 import kotlinx.coroutines.launch
@@ -19,7 +22,11 @@ import kotlinx.coroutines.launch
  * Pion digerakkan engine via KorgeRenderer; HUD mengamati StateFlow.
  */
 class GameplayScene(
-    private val playerNames: List<String> = listOf("Pemain 1", "Pemain 2")
+    private val playerNames: List<String> = listOf("Pemain 1", "Pemain 2"),
+    /** Null = main lokal. Guest jaringan: controller dari GameSession. */
+    private val controller: GameController? = null,
+    /** Host jaringan: siarkan snapshot ke guest setiap giliran. */
+    private val hostSession: HostSession? = null
 ) : Scene() {
 
     override suspend fun SContainer.sceneMain() {
@@ -111,6 +118,16 @@ class GameplayScene(
         val messageText = text("", textSize = 12.0) { color = Theme.PAPER }
         messageText.position(24, SH - 46)
 
+        // ---------- Tombol aturan (muat ulang) & bayar denda ----------
+        val rulesButton: View = solidRect((SW - 72) / 2, 48.0, Theme.PANEL_LIGHT) { position(24, 724) }
+        val jailFineButton: View = solidRect((SW - 72) / 2, 48.0, Theme.PANEL_LIGHT) { position(48 + (SW - 72) / 2, 724) }
+        text("MUAT ULANG ATURAN", textSize = 12.0) { color = Theme.PAPER }
+            .position(24 + (SW - 72) / 4 - 52, 738)
+        val jailFineLabel = text("BAYAR DENDA", textSize = 12.0) { color = Theme.PAPER }
+        jailFineLabel.position(48 + (SW - 72) / 2 + (SW - 72) / 4 - 40, 738)
+        jailFineButton.visible = false
+        jailFineLabel.visible = false
+
         // Dialog aksi (tombol dibuat di luar agar bisa direferensikan renderer).
         val buyButton: View = solidRect(140, 44, Theme.GREEN) { position(SW / 2 - 150, 640) }
         val skipButton: View = solidRect(140, 44, Theme.PANEL_LIGHT) { position(SW / 2 + 10, 640) }
@@ -126,6 +143,20 @@ class GameplayScene(
             addChild(skipButton)
         }
 
+        // Kartu event (Chance/Community Chest) — overlay dengan tombol OK.
+        val eventCloseButton: View = solidRect(180.0, 48.0, Theme.GOLD) { position(SW / 2 - 90, 560) }
+        val eventCardText: Text = text("", textSize = 14.0) { color = Theme.PAPER }
+        val eventCardUI = container {
+            visible = false
+            solidRect(SW, SH, Colors["#000000CC"]) { position(0, 0) }
+            solidRect(SW - 80, 260.0, Theme.PANEL_LIGHT) { position(40, 330) }
+            addChild(eventCardText)
+            text("KARTU", textSize = 16.0) { color = Theme.GOLD }.position(SW / 2 - 24, 348)
+            text("OK", textSize = 18.0) { color = Theme.BG }.position(SW / 2 - 14, 572)
+            addChild(eventCloseButton)
+        }
+        eventCardText.position(56, 400)
+
         // ---------- DI ----------
         val renderer = KorgeRenderer(
             dieViews = listOf(die1, die2),
@@ -133,15 +164,39 @@ class GameplayScene(
             pionViews = pionViews,
             actionUI = actionUI,
             buyButton = buyButton,
-            skipButton = skipButton
+            skipButton = skipButton,
+            eventCardUI = eventCardUI,
+            eventCardText = eventCardText,
+            eventCardCloseButton = eventCloseButton
         )
-        val engine: GameEnginePort = GameEngineImpl(repo, renderer)
+        val ctrl: GameController = controller ?: run {
+            val engine: GameEnginePort = GameEngineImpl(repo, renderer)
+            engine.startGame(playerNames)
+            LocalController(engine)
+        }
+        // Guest jaringan: alirkan snapshot/delta sesi ke GameState.
+        if (ctrl is NetworkController) launch { ctrl.pumpState() }
+        // Host jaringan: umumkan mulai + siarkan snapshot tiap perubahan.
+        if (hostSession != null) {
+            launch { hostSession.startGame(playerNames) }
+            launch {
+                ctrl.observeState().collect { state ->
+                    hostSession.broadcastSnapshot(state.toSnapshotDto())
+                }
+            }
+        }
 
-        // ---------- Mulai game ----------
-        engine.startGame(playerNames)
+        // Tombol muat ulang aturan (setelah edit rules.lua).
+        rulesButton.onClick {
+            val ok = ctrl.reloadRules()
+            messageText.text = if (ok) "Aturan dimuat ulang: ${ctrl.ruleSourceName}"
+                               else "Gagal memuat aturan — tetap pakai yang lama."
+        }
+        // Tombol bayar denda penjara (muncul saat pemain aktif dipenjara).
+        jailFineButton.onClick { stage!!.views.launch { ctrl.payJailFine() } }
 
         // Kartu pemain (horizontal, di bawah judul panel).
-        engine.observeState().value.players.forEachIndexed { i, p ->
+        ctrl.observeState().value.players.forEachIndexed { i, p ->
             val cardW = (SW - 60) / 4
             val cardX = 24 + i * cardW
             val cardY = py + 32
@@ -157,7 +212,7 @@ class GameplayScene(
         }
 
         // Pion di papan.
-        engine.observeState().value.players.forEachIndexed { i, p ->
+        ctrl.observeState().value.players.forEachIndexed { i, p ->
             val (cx, cy) = BoardLayout.center(p.position)
             val pion = circle(9.0, Colors[p.colorHex]) { position(cx - 9, cy - 9 + i * 4) }
             pionViews.add(pion)
@@ -174,12 +229,12 @@ class GameplayScene(
             fontSize = 22.0,
             corner = 14.0
         ) {
-            engine.rollDiceAndMove()
+            if (ctrl.isMyTurn) ctrl.rollDiceAndMove()
         }.position(24, SH - 116)
 
         // ---------- Amati state untuk HUD ----------
         launch {
-            engine.observeState().collect { state ->
+            ctrl.observeState().collect { state ->
                 turnText.text = "GILIRAN: ${state.currentPlayer.name}"
                 state.players.forEachIndexed { i, p ->
                     moneyTexts.getOrNull(i)?.text = "Rp ${p.money}"
@@ -187,6 +242,10 @@ class GameplayScene(
                     cardViews.getOrNull(i)?.colorMul =
                         if (i == state.currentPlayerIndex) Colors.WHITE else Colors["#888888"]
                 }
+                // Tombol bayar denda hanya saat pemain aktif dipenjara.
+                val inJail = state.currentPlayer.inJail
+                jailFineButton.visible = inJail
+                jailFineLabel.visible = inJail
             }
         }
     }

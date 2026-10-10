@@ -22,6 +22,27 @@ interface GameEnginePort {
 
     /** Bangun rumah pada properti milik pemain saat ini. */
     suspend fun buildHouse(tileIndex: Int)
+
+    /** Jual rumah (kembalikan setengah harga bangunan) dari properti pemain. */
+    suspend fun sellHouse(tileIndex: Int)
+
+    /** Hipotik properti: terima nilai hipotik, properti berhenti menghasilkan sewa. */
+    suspend fun mortgageProperty(tileIndex: Int)
+
+    /** Bebaskan hipotik: bayar nilai hipotik + 10% biaya, properti aktif lagi. */
+    suspend fun unmortgageProperty(tileIndex: Int)
+
+    /** Bayar denda $50 untuk keluar penjara di awal giliran (opsional). */
+    suspend fun payJailFine()
+
+    /**
+     * Muat ulang aturan Lua dari disk tanpa restart game (user mengedit
+     * rules.lua lalu menekan "Muat Ulang Aturan" di UI). true bila berhasil.
+     */
+    fun reloadRules(): Boolean
+
+    /** Sumber aturan aktif: path file rules.lua user, atau "bawaan". */
+    val ruleSourceName: String
 }
 
 /**
@@ -33,6 +54,13 @@ interface GameRendererPort {
     suspend fun animatePionMove(playerId: Int, fromPosition: Int, toPosition: Int)
     suspend fun showBuyDialog(tileIndex: Int): Boolean
     suspend fun showMessage(text: String)
+
+    /**
+     * Tampilkan kartu Chance/Community Chest; menunggu pemain menutupnya.
+     * Dipakai mesin saat resolve petak EVENT.
+     */
+    suspend fun showEventCard(text: String)
+
     fun updateUI(state: GameState)
 }
 

@@ -13,6 +13,8 @@ kotlin {
                 implementation(project(":core-domain"))
                 implementation(project(":core-data"))
                 implementation(project(":core-assets"))
+                // Sesi jaringan (guest: GameSession; host: HostSession).
+                implementation(project(":core-network"))
             }
         }
     }

@@ -72,7 +72,36 @@ class MenuScene : Scene() {
         ) {
             val names = (1..selectedCount).map { "Pemain $it" }
             sceneContainer.changeTo { GameplayScene(names) }
-        }.position(24, 560)
+        }.position(24, 548)
+
+        // Tombol jaringan: buat sesi (host) / gabung (guest) — cetak biru 12.
+        styledButton(
+            scope = stage!!.views,
+            label = "BUAT SESI (HOST)",
+            width = SW - 48,
+            height = 56.0,
+            bg = Theme.PANEL_LIGHT,
+            fg = Theme.PAPER,
+            border = Theme.GOLD,
+            fontSize = 16.0,
+            corner = 12.0
+        ) {
+            sceneContainer.changeTo { LobbyScene() }
+        }.position(24, 628)
+
+        styledButton(
+            scope = stage!!.views,
+            label = "GABUNG SESI",
+            width = SW - 48,
+            height = 56.0,
+            bg = Theme.PANEL_LIGHT,
+            fg = Theme.PAPER,
+            border = Theme.GOLD,
+            fontSize = 16.0,
+            corner = 12.0
+        ) {
+            sceneContainer.changeTo { ScanScene() }
+        }.position(24, 696)
 
         // Tombol keluar.
         styledButton(
@@ -87,13 +116,13 @@ class MenuScene : Scene() {
             corner = 12.0
         ) {
             views.gameWindow.close()
-        }.position(24, 648)
+        }.position(24, 764)
 
         // Info kontrol.
-        val hint = text("Pilih jumlah pemain, lalu mulai permainan", textSize = 12.0) {
+        val hint = text("Main lokal, atau main bersama lewat WiFi/Bluetooth", textSize = 12.0) {
             color = Theme.MUTED
         }
-        hint.position(cx - hint.width / 2, 740)
+        hint.position(cx - hint.width / 2, 836)
 
         // Versi.
         val version = text("v1.3 · 2026", textSize = 11.0) { color = Theme.MUTED }

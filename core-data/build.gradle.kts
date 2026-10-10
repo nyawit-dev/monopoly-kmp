@@ -17,6 +17,14 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(project(":core-domain"))
+                // Protokol sesi jaringan (dipakai NetworkBridge).
+                implementation(project(":core-network"))
+            }
+        }
+        val jvmMain by getting {
+            dependencies {
+                // Mesin aturan Lua (hanya JVM; JS pakai aturan baku).
+                implementation(libs.luaj)
             }
         }
         val commonTest by getting {
