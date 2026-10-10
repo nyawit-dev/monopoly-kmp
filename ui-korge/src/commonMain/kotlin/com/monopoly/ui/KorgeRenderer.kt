@@ -11,21 +11,21 @@ import korlibs.time.milliseconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 
+/** Radius pion (dipakai untuk mengimbangi tween ke pusat petak). */
+private const val PION_RADIUS = 13.0
+
 /**
  * Renderer KorGE. Tidak tahu aturan game: hanya menjalankan perintah
- * animasi/visual dari GameRendererPort. Logika posisi petak dihitung di
- * sini (sisi UI) memakai layout papan 11x11 standar Monopoli.
+ * animasi/visual dari GameRendererPort. Posisi petak memakai BoardLayout
+ * (sumber tunggal bersama dengan GameplayScene).
  */
 class KorgeRenderer(
-    private val diceText: Text,
+    private val dieTexts: List<Text>,
     private val messageText: Text,
     private val pionViews: List<View>,
     private val actionUI: Container,
     private val buyButton: View,
-    private val skipButton: View,
-    private val tileSize: Double = 56.0,
-    private val originX: Double = 40.0,
-    private val originY: Double = 40.0
+    private val skipButton: View
 ) : GameRendererPort {
 
     private var buyDialogDeferred: CompletableDeferred<Boolean>? = null
@@ -36,25 +36,35 @@ class KorgeRenderer(
     }
 
     override suspend fun animateDiceRoll(finalValue: DiceRoll) {
-        repeat(14) {
-            diceText.text = "${(1..6).random()}"
-            delay(60)
+        repeat(12) {
+            dieTexts.forEach { it.text = "${(1..6).random()}" }
+            delay(55)
         }
-        diceText.text = "${finalValue.total}"
-        diceText.tween(diceText::scale[1.25], time = 120.milliseconds)
-        diceText.tween(diceText::scale[1.0], time = 120.milliseconds)
+        dieTexts.getOrNull(0)?.text = "${finalValue.die1}"
+        dieTexts.getOrNull(1)?.text = "${finalValue.die2}"
+        // Denyut pada dadu pertama saat hasil akhir.
+        dieTexts.getOrNull(0)?.let { d ->
+            d.tween(d::scale[1.25], time = 110.milliseconds)
+            d.tween(d::scale[1.0], time = 110.milliseconds)
+        }
     }
 
     override suspend fun animatePionMove(playerId: Int, fromPosition: Int, toPosition: Int) {
         val pion = pionViews.getOrNull(playerId) ?: return
-        val from = tileCenter(fromPosition)
-        pion.tween(pion::x[from.first], pion::y[from.second], time = 120.milliseconds)
+        val from = BoardLayout.center(fromPosition)
+        pion.tween(
+            pion::x[from.first - PION_RADIUS], pion::y[from.second - PION_RADIUS],
+            time = 100.milliseconds
+        )
         val steps = if (toPosition >= fromPosition) toPosition - fromPosition
                     else (40 - fromPosition) + toPosition // lewat START
         for (i in 1..steps) {
             val pos = (fromPosition + i) % 40
-            val c = tileCenter(pos)
-            pion.tween(pion::x[c.first], pion::y[c.second], time = 110.milliseconds)
+            val c = BoardLayout.center(pos)
+            pion.tween(
+                pion::x[c.first - PION_RADIUS], pion::y[c.second - PION_RADIUS],
+                time = 100.milliseconds
+            )
         }
     }
 
@@ -72,30 +82,9 @@ class KorgeRenderer(
 
     override fun updateUI(state: GameState) {
         messageText.text = state.message
-        // Sorot pemain aktif lewat skala kecil (bukan aturan, hanya visual).
+        // Sorot pemain aktif (tint penuh), non-aktif diredupkan.
         pionViews.forEachIndexed { i, v ->
-            v.colorMul = if (i == state.currentPlayerIndex) Colors.WHITE else Colors["#BBBBBB"]
+            v.colorMul = if (i == state.currentPlayerIndex) Colors.WHITE else Colors["#777777"]
         }
-    }
-
-    /**
-     * Peta indeks petak (0..39) ke koordinat piksel pada papan 11x11.
-     * Petak 0 (START) di pojok kanan-bawah, berlawanan arah jarum jam.
-     */
-    private fun tileCenter(index: Int): Pair<Double, Double> {
-        val i = ((index % 40) + 40) % 40
-        val gx: Double
-        val gy: Double
-        when {
-            i == 0 -> { gx = 10.0; gy = 10.0 }               // START (pojok kanan-bawah)
-            i in 1..9 -> { gx = (10 - i).toDouble(); gy = 10.0 }   // sisi bawah, ke kiri
-            i == 10 -> { gx = 0.0; gy = 10.0 }               // JAIL (pojok kiri-bawah)
-            i in 11..19 -> { gx = 0.0; gy = (10 - (i - 10)).toDouble() } // sisi kiri, ke atas
-            i == 20 -> { gx = 0.0; gy = 0.0 }                // FREE_PARKING (pojok kiri-atas)
-            i in 21..29 -> { gx = (i - 20).toDouble(); gy = 0.0 }   // sisi atas, ke kanan
-            i == 30 -> { gx = 10.0; gy = 0.0 }               // GO_TO_JAIL (pojok kanan-atas)
-            else -> { gx = 10.0; gy = (i - 30).toDouble() }  // sisi kanan, ke bawah
-        }
-        return Pair(originX + gx * tileSize, originY + gy * tileSize)
     }
 }
