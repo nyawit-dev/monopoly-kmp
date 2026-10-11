@@ -211,11 +211,40 @@ class GameplayScene(
             moneyTexts.add(moneyT)
         }
 
-        // Pion di papan.
+        // Penanda rumah/hotel + strip kepemilikan per petak properti
+        // (disembunyikan; visibilitas diatur pengamat state).
+        val houseMarkers = mutableMapOf<Int, View>()
+        val hotelMarkers = mutableMapOf<Int, View>()
+        val ownerStrips = mutableMapOf<Int, View>()
+        tiles.forEach { tile ->
+            if (tile.type == TileType.PROPERTY && tile.price != null) {
+                val (cx, cy) = BoardLayout.center(tile.index)
+                val half = BoardLayout.TILE / 2
+                val house = createHouseMarker(13.0)
+                house.position(cx - half + 3, cy - half - 1)
+                house.visible = false
+                houseMarkers[tile.index] = house
+                val hotel = createHotelMarker(18.0)
+                hotel.position(cx - half + 2, cy - half - 3)
+                hotel.visible = false
+                hotelMarkers[tile.index] = hotel
+                val strip = createOwnershipStrip("#FFFFFF", 3.0)
+                strip.position(cx - half, cy + half - 3)
+                strip.visible = false
+                ownerStrips[tile.index] = strip
+            }
+        }
+
+        // Pion di papan (bidak vektor per pemain + titik warna pembeda).
         ctrl.observeState().value.players.forEachIndexed { i, p ->
             val (cx, cy) = BoardLayout.center(p.position)
-            val pion = circle(9.0, Colors[p.colorHex]) { position(cx - 9, cy - 9 + i * 4) }
-            pionViews.add(pion)
+            val token = createToken(
+                TokenKind.values()[i % TokenKind.values().size],
+                22.0
+            )
+            token.position(cx - 11, cy - 11 + i * 3)
+            pionViews.add(token)
+            circle(4.0, Colors[p.colorHex]) { position(cx - 4 + i * 2, cy + 10) }
         }
 
         // ---------- Tombol kocok (paling bawah, besar) ----------
@@ -241,6 +270,23 @@ class GameplayScene(
                     // Sorot kartu pemain aktif.
                     cardViews.getOrNull(i)?.colorMul =
                         if (i == state.currentPlayerIndex) Colors.WHITE else Colors["#888888"]
+                }
+                // Rumah/hotel + strip kepemilikan per petak.
+                houseMarkers.forEach { (idx, marker) ->
+                    val h = state.houses[idx] ?: 0
+                    marker.visible = h in 1..4
+                }
+                hotelMarkers.forEach { (idx, marker) ->
+                    marker.visible = (state.houses[idx] ?: 0) >= 5
+                }
+                ownerStrips.forEach { (idx, strip) ->
+                    val owner = state.tileOwners[idx]
+                    if (owner != null) {
+                        strip.visible = true
+                        strip.colorMul = Colors[state.players[owner].colorHex]
+                    } else {
+                        strip.visible = false
+                    }
                 }
                 // Tombol bayar denda hanya saat pemain aktif dipenjara.
                 val inJail = state.currentPlayer.inJail
