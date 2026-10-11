@@ -5,8 +5,11 @@ import com.monopoly.core.GameEnginePort
 import com.monopoly.core.TileType
 import com.monopoly.data.GameEngineImpl
 import com.monopoly.data.GameRepository
+import com.monopoly.data.diffTo
 import com.monopoly.data.toSnapshotDto
+import com.monopoly.net.Actions
 import com.monopoly.net.HostSession
+import com.monopoly.net.SnapshotDto
 import korlibs.image.color.Colors
 import korlibs.korge.input.onClick
 import korlibs.korge.scene.Scene
@@ -33,6 +36,12 @@ class GameplayScene(
         val SW = BoardLayout.SCREEN_W
         val SH = BoardLayout.SCREEN_H
 
+        // Layout responsif: ponsel (potret) vs tablet (layar lebar).
+        val plan = planLayout(
+            stage!!.views.actualVirtualWidth.toDouble(),
+            stage!!.views.actualVirtualHeight.toDouble()
+        )
+
         // ---------- Data ----------
         val tiles = JsonAssetLoader().loadBoardConfig()
         val repo = GameRepository(tiles)
@@ -47,40 +56,42 @@ class GameplayScene(
         val turnText = text("", textSize = 13.0) { color = Theme.PAPER }
         turnText.position(SW - 16 - 200, 20)
 
-        // ---------- Papan (atas) ----------
-        solidRect(
-            BoardLayout.BOARD_SIZE, BoardLayout.BOARD_SIZE, Theme.PANEL
-        ) { position(BoardLayout.ORIGIN_X - 4, BoardLayout.ORIGIN_Y - 4) }
+        // ---------- Lapis papan (diskala/dipindah untuk tablet) ----------
+        val boardLayer = container {
+            solidRect(
+                BoardLayout.BOARD_SIZE, BoardLayout.BOARD_SIZE, Theme.PANEL
+            ) { position(BoardLayout.ORIGIN_X - 4, BoardLayout.ORIGIN_Y - 4) }
 
-        tiles.forEach { tile ->
-            val (cx, cy) = BoardLayout.center(tile.index)
-            val x = cx - BoardLayout.TILE / 2
-            val y = cy - BoardLayout.TILE / 2
-            val w = BoardLayout.TILE - 2
-            solidRect(w, w, if (tile.isCorner) Theme.PANEL_LIGHT else Theme.TILE) { position(x, y) }
-            when {
-                tile.type == TileType.PROPERTY && tile.colorGroup != null -> {
-                    // Chip warna grup.
-                    solidRect(w, 7.0, Theme.groupColor(tile.colorGroup)) { position(x, y) }
-                    // Harga.
-                    text("${tile.price}", textSize = 8.0) { color = Theme.MUTED }
-                        .position(x + 2, y + w - 11)
-                }
-                tile.isCorner -> {
-                    val label = when (tile.index) {
-                        0 -> "START"; 10 -> "JAIL"; 20 -> "PARKIR"; 30 -> "JAIL"; else -> ""
+            tiles.forEach { tile ->
+                val (cx, cy) = BoardLayout.center(tile.index)
+                val x = cx - BoardLayout.TILE / 2
+                val y = cy - BoardLayout.TILE / 2
+                val w = BoardLayout.TILE - 2
+                solidRect(w, w, if (tile.isCorner) Theme.PANEL_LIGHT else Theme.TILE) { position(x, y) }
+                when {
+                    tile.type == TileType.PROPERTY && tile.colorGroup != null -> {
+                        // Chip warna grup.
+                        solidRect(w, 7.0, Theme.groupColor(tile.colorGroup)) { position(x, y) }
+                        // Harga.
+                        text("${tile.price}", textSize = 8.0) { color = Theme.MUTED }
+                            .position(x + 2, y + w - 11)
                     }
-                    text(label, textSize = 8.0) { color = Theme.GOLD }
-                        .position(x + 2, y + w - 11)
-                }
-                else -> {
-                    val sym = when (tile.type) {
-                        TileType.RAILROAD -> "R"
-                        TileType.UTILITY -> "U"
-                        else -> "?"
+                    tile.isCorner -> {
+                        val label = when (tile.index) {
+                            0 -> "START"; 10 -> "JAIL"; 20 -> "PARKIR"; 30 -> "JAIL"; else -> ""
+                        }
+                        text(label, textSize = 8.0) { color = Theme.GOLD }
+                            .position(x + 2, y + w - 11)
                     }
-                    text(sym, textSize = 13.0) { color = Theme.MUTED }
-                        .position(x + w / 2 - 4, y + w / 2 - 7)
+                    else -> {
+                        val sym = when (tile.type) {
+                            TileType.RAILROAD -> "R"
+                            TileType.UTILITY -> "U"
+                            else -> "?"
+                        }
+                        text(sym, textSize = 13.0) { color = Theme.MUTED }
+                            .position(x + w / 2 - 4, y + w / 2 - 7)
+                    }
                 }
             }
         }
@@ -90,41 +101,47 @@ class GameplayScene(
         wm.position(BoardLayout.ORIGIN_X + BoardLayout.TILE * 2.5 - wm.width / 2,
             BoardLayout.ORIGIN_Y + BoardLayout.TILE * 5 - 14)
 
-        // ---------- Panel bawah ----------
+        // ---------- Lapis panel (pindah ke samping saat tablet) ----------
+        // Elemen dibuat langsung di panelLayer (bukan di dalam lambda) agar
+        // tetap terlihat oleh renderer, tombol, dan pengamat state di bawah.
+        val panelW = if (plan.isWide) plan.sidePanelW else SW
         val py = BoardLayout.PANEL_Y
-        solidRect(SW - 24, SH - py - 12, Theme.PANEL) { position(12, py) }
+        val panelLayer = container { }
 
+        panelLayer.solidRect(panelW - 24, SH - py - 12, Theme.PANEL) { position(12, py) }
         // Judul panel pemain.
-        text("PEMAIN", textSize = 11.0) { color = Theme.MUTED }.position(24, py + 12)
+        panelLayer.text("PEMAIN", textSize = 11.0) { color = Theme.MUTED }
+            .position(24, py + 12)
 
         // ---------- Elemen dinamis HUD (sebelum renderer: referensi list) ----------
         val moneyTexts = mutableListOf<Text>()
         val cardViews = mutableListOf<View>()
         val pionViews = mutableListOf<View>()
+        val pionDots = mutableListOf<View>()
         val nameTexts = mutableListOf<Text>()
 
         // ---------- Kotak area dadu (tengah panel bawah) ----------
         val diceZoneY = py + 90
-        solidRect(SW - 48, 96.0, Theme.PANEL_LIGHT) { position(24, diceZoneY) }
+        panelLayer.solidRect(panelW - 48, 96.0, Theme.PANEL_LIGHT) { position(24, diceZoneY) }
 
         // ---------- Dadu visual ----------
         val dieSize = 72.0
-        val die1 = createDie(SW / 2 - dieSize - 8, diceZoneY + 12, dieSize)
-        val die2 = createDie(SW / 2 + 8, diceZoneY + 12, dieSize)
+        val die1 = panelLayer.createDie(panelW / 2 - dieSize - 8, diceZoneY + 12, dieSize)
+        val die2 = panelLayer.createDie(panelW / 2 + 8, diceZoneY + 12, dieSize)
         die1.setValue(1)
         die2.setValue(1)
 
         // Pesan (baris bawah panel).
-        val messageText = text("", textSize = 12.0) { color = Theme.PAPER }
+        val messageText = panelLayer.text("", textSize = 12.0) { color = Theme.PAPER }
         messageText.position(24, SH - 46)
 
         // ---------- Tombol aturan (muat ulang) & bayar denda ----------
-        val rulesButton: View = solidRect((SW - 72) / 2, 48.0, Theme.PANEL_LIGHT) { position(24, 724) }
-        val jailFineButton: View = solidRect((SW - 72) / 2, 48.0, Theme.PANEL_LIGHT) { position(48 + (SW - 72) / 2, 724) }
-        text("MUAT ULANG ATURAN", textSize = 12.0) { color = Theme.PAPER }
-            .position(24 + (SW - 72) / 4 - 52, 738)
-        val jailFineLabel = text("BAYAR DENDA", textSize = 12.0) { color = Theme.PAPER }
-        jailFineLabel.position(48 + (SW - 72) / 2 + (SW - 72) / 4 - 40, 738)
+        val rulesButton: View = panelLayer.solidRect((panelW - 72) / 2, 48.0, Theme.PANEL_LIGHT) { position(24, 724) }
+        val jailFineButton: View = panelLayer.solidRect((panelW - 72) / 2, 48.0, Theme.PANEL_LIGHT) { position(48 + (panelW - 72) / 2, 724) }
+        panelLayer.text("MUAT ULANG ATURAN", textSize = 12.0) { color = Theme.PAPER }
+            .position(24 + (panelW - 72) / 4 - 52, 738)
+        val jailFineLabel = panelLayer.text("BAYAR DENDA", textSize = 12.0) { color = Theme.PAPER }
+        jailFineLabel.position(48 + (panelW - 72) / 2 + (panelW - 72) / 4 - 40, 738)
         jailFineButton.visible = false
         jailFineLabel.visible = false
 
@@ -176,12 +193,41 @@ class GameplayScene(
         }
         // Guest jaringan: alirkan snapshot/delta sesi ke GameState.
         if (ctrl is NetworkController) launch { ctrl.pumpState() }
-        // Host jaringan: umumkan mulai + siarkan snapshot tiap perubahan.
+        // Host jaringan: umumkan mulai, eksekusi Command guest, siarkan delta.
         if (hostSession != null) {
             launch { hostSession.startGame(playerNames) }
             launch {
+                hostSession.commands.collect { (idx, cmd) ->
+                    // Hanya eksekusi bila benar giliran pemain itu.
+                    if (ctrl.state.currentPlayerIndex == idx) {
+                        // tile diambil ke lokal: smart-cast untuk panggilan suspend.
+                        val tile = cmd.tile
+                        when (cmd.action) {
+                            Actions.ROLL -> ctrl.rollDiceAndMove()
+                            Actions.BUY -> ctrl.buyCurrentProperty()
+                            Actions.BUILD_HOUSE ->
+                                if (tile != null) ctrl.buildHouse(tile) else Unit
+                            Actions.SELL_HOUSE ->
+                                if (tile != null) ctrl.sellHouse(tile) else Unit
+                            Actions.MORTGAGE ->
+                                if (tile != null) ctrl.mortgageProperty(tile) else Unit
+                            Actions.UNMORTGAGE ->
+                                if (tile != null) ctrl.unmortgageProperty(tile) else Unit
+                            Actions.PAY_FINE -> ctrl.payJailFine()
+                            else -> Unit // SKIP: giliran berakhir otomatis
+                        }
+                    }
+                }
+            }
+            // Siarkan state: penuh pertama, lalu delta hemat bandwidth.
+            launch {
+                var last: SnapshotDto? = null
                 ctrl.observeState().collect { state ->
-                    hostSession.broadcastSnapshot(state.toSnapshotDto())
+                    val dto = state.toSnapshotDto()
+                    val prev = last
+                    if (prev == null) hostSession.broadcastSnapshot(dto)
+                    else hostSession.broadcastDelta(prev.turnNumber, prev.diffTo(dto, prev.turnNumber))
+                    last = dto
                 }
             }
         }
@@ -197,18 +243,21 @@ class GameplayScene(
 
         // Kartu pemain (horizontal, di bawah judul panel).
         ctrl.observeState().value.players.forEachIndexed { i, p ->
-            val cardW = (SW - 60) / 4
+            val cardW = (panelW - 60) / 4
             val cardX = 24 + i * cardW
             val cardY = py + 32
             val card = solidRect(cardW - 8, 46.0, Theme.PANEL_LIGHT) { position(cardX, cardY) }
             cardViews.add(card)
-            circle(8.0, Colors[p.colorHex]) { position(cardX + 10, cardY + 9) }
+            panelLayer.addChild(card)
+            panelLayer.addChild(circle(8.0, Colors[p.colorHex]) { position(cardX + 10, cardY + 9) })
             val nameT = text(p.name.take(8), textSize = 10.0) { color = Theme.PAPER }
             nameT.position(cardX + 24, cardY + 6)
             nameTexts.add(nameT)
+            panelLayer.addChild(nameT)
             val moneyT = text("Rp ${p.money}", textSize = 11.0) { color = Theme.GOLD }
             moneyT.position(cardX + 24, cardY + 24)
             moneyTexts.add(moneyT)
+            panelLayer.addChild(moneyT)
         }
 
         // Penanda rumah/hotel + strip kepemilikan per petak properti
@@ -244,14 +293,14 @@ class GameplayScene(
             )
             token.position(cx - 11, cy - 11 + i * 3)
             pionViews.add(token)
-            circle(4.0, Colors[p.colorHex]) { position(cx - 4 + i * 2, cy + 10) }
+            pionDots.add(circle(4.0, Colors[p.colorHex]) { position(cx - 4 + i * 2, cy + 10) })
         }
 
         // ---------- Tombol kocok (paling bawah, besar) ----------
-        styledButton(
+        val rollButton = styledButton(
             scope = stage!!.views,
             label = "KOCOK DADU",
-            width = SW - 48,
+            width = panelW - 48,
             height = 64.0,
             bg = Theme.GOLD,
             fg = Theme.BG,
@@ -259,7 +308,9 @@ class GameplayScene(
             corner = 14.0
         ) {
             if (ctrl.isMyTurn) ctrl.rollDiceAndMove()
-        }.position(24, SH - 116)
+        }
+        rollButton.position(24, SH - 116)
+        panelLayer.addChild(rollButton)
 
         // ---------- Amati state untuk HUD ----------
         launch {
@@ -292,6 +343,44 @@ class GameplayScene(
                 val inJail = state.currentPlayer.inJail
                 jailFineButton.visible = inJail
                 jailFineLabel.visible = inJail
+            }
+        }
+
+        // ---------- Tata letak responsif (ponsel vs tablet) ----------
+        // Elemen papan dibuat di root (butuh ctrl/state) -> pindahkan ke
+        // lapis papan agar ikut diskala di layar lebar.
+        houseMarkers.values.forEach { boardLayer.addChild(it) }
+        hotelMarkers.values.forEach { boardLayer.addChild(it) }
+        ownerStrips.values.forEach { boardLayer.addChild(it) }
+        pionViews.forEach { boardLayer.addChild(it) }
+        pionDots.forEach { boardLayer.addChild(it) }
+        boardLayer.addChild(wm)
+
+        fun applyLayout(p: LayoutPlan) {
+            if (p.isWide) {
+                // Tablet: papan kiri (diskala muat tinggi), panel samping kanan.
+                boardLayer.position(p.boardOffsetX, p.boardOffsetY)
+                boardLayer.scale = p.boardScale
+                panelLayer.position(p.sidePanelX, 0)
+            } else {
+                // Ponsel: papan atas, panel bawah (tata letak asli).
+                boardLayer.position(0.0, 0.0)
+                boardLayer.scale = 1.0
+                panelLayer.position(0.0, BoardLayout.PANEL_Y.toDouble())
+            }
+        }
+        applyLayout(plan)
+
+        // Terapkan ulang saat jendela diubah ukuran (putar layar).
+        var lastVW = stage!!.views.actualVirtualWidth.toDouble()
+        var lastVH = stage!!.views.actualVirtualHeight.toDouble()
+        addUpdater { _ ->
+            val vw = stage!!.views.actualVirtualWidth.toDouble()
+            val vh = stage!!.views.actualVirtualHeight.toDouble()
+            if (vw != lastVW || vh != lastVH) {
+                lastVW = vw
+                lastVH = vh
+                applyLayout(planLayout(vw, vh))
             }
         }
     }

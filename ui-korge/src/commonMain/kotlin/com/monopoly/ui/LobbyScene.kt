@@ -31,7 +31,11 @@ class LobbyScene : Scene() {
         val port = openHostServer(hostName, netScope) { transport ->
             netScope.launch {
                 transport.incoming.collect { msg ->
-                    if (msg is NetMessage.Hello) hostSession.onHello(transport, msg)
+                    when (msg) {
+                        is NetMessage.Hello -> hostSession.onHello(transport, msg)
+                        is NetMessage.Command -> hostSession.onCommand(transport, msg)
+                        else -> Unit
+                    }
                 }
                 hostSession.onGuestLeft(transport)
             }
@@ -90,14 +94,15 @@ class LobbyScene : Scene() {
             fontSize = 22.0,
             corner = 14.0
         ) {
+            // Urutan slot = indeks jaringan: host (0), guest nyata, lalu bot.
             val guestNames = hostSession.lobby.value.map { it.name }
-            val names = guestNames + (1..botCount).map { "Bot $it" }
+            val names = listOf(hostName) + guestNames + (1..botCount).map { "Bot $it" }
             if (names.size >= 2) {
                 sceneContainer.changeTo {
                     GameplayScene(playerNames = names, hostSession = hostSession)
                 }
             } else {
-                statusText.text = "Butuh minimal 2 pemain (guest atau bot)"
+                statusText.text = "Butuh minimal 1 guest atau bot di samping host"
             }
         }.position(24, 672)
 

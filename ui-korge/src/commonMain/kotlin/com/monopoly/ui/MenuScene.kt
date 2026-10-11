@@ -103,6 +103,21 @@ class MenuScene : Scene() {
             sceneContainer.changeTo { ScanScene() }
         }.position(24, 696)
 
+        // Tombol Manajer Mod (fase 3 — cetak biru 08): nyalakan/matikan mod Lua.
+        styledButton(
+            scope = stage!!.views,
+            label = "MANAJER MOD",
+            width = SW - 48,
+            height = 52.0,
+            bg = Theme.PANEL_LIGHT,
+            fg = Theme.GOLD,
+            border = Theme.GOLD,
+            fontSize = 16.0,
+            corner = 12.0
+        ) {
+            sceneContainer.changeTo { ModManagerScene() }
+        }.position(24, 730)
+
         // Tombol keluar.
         styledButton(
             scope = stage!!.views,
@@ -116,7 +131,7 @@ class MenuScene : Scene() {
             corner = 12.0
         ) {
             views.gameWindow.close()
-        }.position(24, 764)
+        }.position(24, 798)
 
         // Info kontrol.
         val hint = text("Main lokal, atau main bersama lewat WiFi/Bluetooth", textSize = 12.0) {

@@ -1,0 +1,20 @@
+{
+  "id": "contoh-pot",
+  "name": "Contoh: Pot",
+  "version": "1.0.0",
+  "author": "nyawit",
+  "api_version": 1,
+  "capabilities": [
+    "read_state",
+    "modify_money",
+    "ui_message"
+  ],
+  "depends": [],
+  "conflicts": [],
+  "priority": 100,
+  "enabled": false,
+  "roles": [
+    "rules"
+  ],
+  "description": "Contoh hidup: ubah aturan dasar, tanam pot di Free Parking, dan sapa pemain lewat event."
+}

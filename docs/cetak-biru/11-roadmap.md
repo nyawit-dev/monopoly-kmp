@@ -14,16 +14,17 @@ Kerja:
 - `ModHostPort` + `reloadRules()` di `GameEnginePort` tetap jalan
 
 Kriteria terima:
-- [ ] Uji: manifest invalid → `ERROR` + pesan persis dokumen 03
-- [ ] Uji: dependensi tak terpenangi/siklik → `ERROR`
-- [ ] Uji: sandbox — `os`, `io`, `load` bernilai nil di dalam mod
-- [ ] Uji: capability ditolak → aksi di-drop + warning, tak crash
-- [ ] Uji: event order (priority desc), `stop` menghentikan rantai
-- [ ] Uji: merge — `money_delta` aditif, `message` last-wins,
+- [x] Uji: manifest invalid → `ERROR` + pesan persis dokumen 03
+- [x] Uji: dependensi tak terpenangi/siklik → `ERROR`
+- [x] Uji: sandbox — `os`, `io`, `load` bernilai nil di dalam mod
+- [x] Uji: capability ditolak → aksi di-drop + warning, tak crash
+- [x] Uji: event order (priority desc), `stop` menghentikan rantai
+- [x] Uji: merge — `money_delta` aditif, `message` last-wins,
       `go_to_jail` sticky-OR
-- [ ] Uji: handler error → di-skip, handler lain jalan
-- [ ] Uji: `setRule` override + fallback default Kotlin
-- [ ] Regresi: 26 test engine lama tetap hijau (aturan baku identik)
+- [x] Uji: handler error → di-skip, handler lain jalan
+- [x] Uji: `setRule` override + fallback default Kotlin
+- [x] Regresi: test engine lama tetap hijau (aturan baku identik) —
+      48/48 test `core-data:jvmTest` hijau.
 
 ## Fase 2 — Peran data + Log Mod
 
@@ -48,8 +49,9 @@ Kerja: layar MOD sesuai dokumen 08 (kartu, toggle, prioritas, detail,
 badge, log), akses dari Menu.
 
 Kriteria terima:
-- [ ] Toggle & prioritas menulis `state.json` + reload
-- [ ] Badge status benar untuk 4 status
+- [x] Toggle & prioritas menulis `state.json` + reload — ModManagerScene
+  (Menu → MANAJER MOD): daftar mod, badge 4 status, toggle, reload, log.
+- [x] Badge status benar untuk 4 status (AKTIF/SEBAGIAN/MATI/ERROR)
 - [ ] Panel detail menampilkan izin/dependensi/pesan galat
 - [ ] Layar kosong → panduan
 
@@ -58,9 +60,13 @@ Kriteria terima:
 Kerja: `AssetProvider` (dokumen 06), sprite token/dadu/latar, fallback
 prosedural, capability `asset_override`.
 
+Status: sebagian — aset **prosedural** sudah jadi (dadu pip, 8 bidak
+vektor di `Tokens.kt`, rumah/hotel di `Houses.kt`, strip kepemilikan);
+yang belum: AssetProvider + override mod.
+
 Kriteria terima:
 - [ ] Uji/visual: mod aset prioritas tinggi menang; rusak → fallback
-- [ ] Token per-pemain campuran mod/prosedural jalan
+- [x] Token per-pemain campuran mod/prosedural jalan (bidak vektor per indeks)
 - [ ] (4b) audio: kunci sfx opsional
 
 ## Fase 5 — ui.lua + mod contoh + dokumentasi
@@ -69,9 +75,11 @@ Kerja: overlay UI sederhana dari mod (pesan & tombol), `mods/contoh-pot/`
 lengkap (dokumen 09), salin panduan ke `mods/README.md`.
 
 Kriteria terima:
+- [x] `mods/contoh-pot/` lengkap + `mods/README.md` (panduan modder,
+  diverifikasi syntax Lua dengan interpreter asli)
 - [ ] Mod contoh aktif → semua 7 bukti dokumen 09 terlihat
-- [ ] `mods/contoh-pot/` nonaktif secara default; bawaan tak berubah
-- [ ] README repo menautkan `docs/cetak-biru/`
+- [x] Mod contoh nonaktif secara default; bawaan tak berubah
+- [x] README repo menautkan `docs/cetak-biru/`
 
 ## Fase 6 — Multiplayer jaringan (dokumen 12)
 
@@ -80,17 +88,23 @@ Kerja:
   GameTransport + GameSession/HostSession (23 unit test).
 - [x] WifiTransport (TCP KorIO + UDP broadcast) + BluetoothTransport
   (Kable 0.35.0, sisi guest — host BT perlu uji perangkat nyata).
-- [ ] Wire engine ↔ sesi: `toSnapshotDto()` + delta builder di core-data;
-  GameplayScene mode jaringan (guest kirim Command, host jalankan engine).
-- [ ] UI: Menu → MAIN JARINGAN, LobbyScene, ScanScene, indikator host.
-- [ ] Uji dua-proses JVM: host+guest main 1 ronde via WiFi TCP.
+- [x] Wire engine ↔ sesi: `toSnapshotDto()` + delta builder di core-data;
+  GameplayScene mode jaringan (guest kirim Command, **host mengeksekusi
+  Command guest di engine** lewat antrean `HostSession.commands`).
+- [x] UI: Menu → BUAT SESI/GABUNG SESI, LobbyScene, ScanScene.
+- [x] Siarkan delta (bukan snapshot penuh) setelah snapshot awal.
+- [x] Uji dua-proses JVM: host+guest main 1 ronde via WiFi TCP.
+- [ ] Uji 2 perangkat nyata (HP) lewat WiFi.
 
 ## Fase 7 — Tampilan dinamis (dokumen 13)
 
 Kerja:
-- [ ] `Layout.kt` (PORTRAIT/WIDE) + `detectLayout` + ResizeComponent.
-- [ ] GameplayScene: susunan ponsel vs tablet (panel samping di layar lebar).
-- [ ] HUD `dockedTo` sudut; tombol aksi ≥48 virtual; rotasi rapi.
+- [x] `Layout.kt` (PORTRAIT/WIDE, breakpoint 720) + `planLayout` +
+  `dockedTo`; deteksi ukuran jendela per-frame di GameplayScene.
+- [x] GameplayScene: susunan ponsel vs tablet (panel samping di layar
+  lebar, papan diskala; panel adaptif `panelW`).
+- [x] HUD `dockedTo` sudut; tombol aksi ≥48 virtual; rotasi rapi
+  (tata letak diterapkan ulang saat jendela diubah ukuran).
 
 ## Urutan ketergantungan
 

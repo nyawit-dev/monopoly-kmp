@@ -1,10 +1,13 @@
 package com.monopoly.net
 
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 
 /**
@@ -134,6 +137,14 @@ class HostSession(private val hostName: String) {
 
     private val guests = mutableListOf<Guest>()
 
+    /**
+     * Antrean Command dari guest (indeks, command). Host (GameplayScene)
+     * menguras dan mengeksekusinya di engine-nya sendiri; giliran
+     * divalidasi di sana (engine tahu currentPlayerIndex).
+     */
+    private val _commands = Channel<Pair<Int, NetMessage.Command>>(Channel.UNLIMITED)
+    val commands: Flow<Pair<Int, NetMessage.Command>> = _commands.receiveAsFlow()
+
     private val _lobby = MutableStateFlow<List<LobbyPlayer>>(emptyList())
     val lobby: StateFlow<List<LobbyPlayer>> = _lobby.asStateFlow()
 
@@ -166,6 +177,16 @@ class HostSession(private val hostName: String) {
     suspend fun onGuestLeft(transport: GameTransport) {
         guests.removeAll { it.transport === transport }
         broadcastLobby()
+    }
+
+    /**
+     * Command dari guest → antrean eksekusi host. Transport tak dikenal
+     * (belum Hello) diabaikan. Pemanggil yang mengeksekusi: GameplayScene.
+     */
+    fun onCommand(transport: GameTransport, cmd: NetMessage.Command) {
+        val g = guests.firstOrNull { it.transport === transport } ?: return
+        if (g.index < 0) return
+        _commands.trySend(g.index to cmd)
     }
 
     private suspend fun broadcastLobby() {
